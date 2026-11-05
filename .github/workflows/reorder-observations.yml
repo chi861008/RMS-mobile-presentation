@@ -1,0 +1,41 @@
+name: One-time presentation update
+on:
+  push:
+    paths:
+      - .github/workflows/reorder-observations.yml
+permissions:
+  contents: write
+jobs:
+  reorder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reverse the three observations on slide 21
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('RMS 手機報表研究.html')
+          s=p.read_text()
+          a=s.index('<div style="height:730px;display:flex;flex-direction:column;justify-content:space-between;padding-top:7px;box-sizing:border-box;">')
+          b=s.index('</div></div></div><div style="position:absolute;left:100px;top:1003px',a)
+          old=s[a:b+12]
+          assert all(old.count(x)==1 for x in ('篩選條件占用首屏空間','比較與趨勢需要逐格閱讀','明細優先，較晚看到結果'))
+          items=[
+            ('明細優先，較晚看到結果','畫面先列出日期與多項數據，摘要重點較不明顯。手機若要快速掌握異常，還需要自行整理結論。'),
+            ('比較與趨勢需要逐格閱讀','日期矩陣需要左右滑動，逐店展開的明細也難同時比對。使用者要自行從數字判斷差異與變化。'),
+            ('篩選條件占用首屏空間','日期、門店與篩選分成多列，結果區被往下擠，第一眼能看到的數據較少。')]
+          new='<div style="height:730px;display:flex;flex-direction:column;justify-content:space-between;padding-top:7px;box-sizing:border-box;">'
+          for n,(title,body) in enumerate(items,1):
+              border=';border-bottom:1px solid #dcdad4' if n<3 else ''
+              new+=f'<div style="padding:0 0 24px{border};"><div style="font-size:32px;font-weight:700;line-height:1.3;color:#1f2328;margin-bottom:14px;"><span style="color:#2f6fdb;margin-right:16px;">{n}</span>{title}</div><div style="font-size:26px;line-height:1.55;color:#4b5159;margin-left:36px;">{body}</div></div>'
+          new+='</div>'
+          p.write_text(s[:a]+new+s[b+12:])
+          PY
+      - name: Publish and remove this one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/reorder-observations.yml
+          git add -A
+          git commit -m "Reverse the three mobile report observations"
+          git push
